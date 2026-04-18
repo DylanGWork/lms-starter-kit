@@ -9,7 +9,6 @@ Use this when you want to stand up a new LMS project from the starter on a fresh
 - Git available
 - You are starting from the reusable repo:
   - `https://github.com/DylanGWork/lms-starter-kit.git`
-- The repo is private, so the VM must have GitHub access configured first
 - You will rebrand the project after the first successful boot
 
 ## 1. Install base packages
@@ -31,38 +30,6 @@ docker compose version
 
 ## 2. Clone the starter
 
-Because the starter repo is private, anonymous clone attempts will usually return `404`. That is expected.
-
-Set up GitHub access first, then clone.
-
-### Option A: SSH key access
-
-Generate a key on the VM if needed:
-
-```bash
-ssh-keygen -t ed25519 -C "your-email@example.com"
-cat ~/.ssh/id_ed25519.pub
-```
-
-Add that public key to your GitHub account, then test:
-
-```bash
-ssh -T git@github.com
-```
-
-Clone with SSH:
-
-```bash
-cd /opt
-sudo git clone git@github.com:DylanGWork/lms-starter-kit.git my-lms
-sudo chown -R "$USER":"$USER" /opt/my-lms
-cd /opt/my-lms
-```
-
-### Option B: Personal access token over HTTPS
-
-If you prefer HTTPS, create a GitHub personal access token with repo read access and use:
-
 ```bash
 cd /opt
 sudo git clone https://github.com/DylanGWork/lms-starter-kit.git my-lms
@@ -70,17 +37,17 @@ sudo chown -R "$USER":"$USER" /opt/my-lms
 cd /opt/my-lms
 ```
 
-Git will prompt for credentials:
-
-- username: your GitHub username
-- password: your GitHub personal access token
-
 If you prefer to keep it under your home directory:
 
 ```bash
-git clone git@github.com:DylanGWork/lms-starter-kit.git ~/my-lms
+git clone https://github.com/DylanGWork/lms-starter-kit.git ~/my-lms
 cd ~/my-lms
 ```
+
+If you later switch the repo back to private, use either:
+
+- SSH key access with `git@github.com:DylanGWork/lms-starter-kit.git`
+- or HTTPS with a GitHub personal access token
 
 ## 3. Create the environment file
 
