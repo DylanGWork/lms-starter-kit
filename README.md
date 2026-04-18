@@ -49,6 +49,7 @@ For the repeatable operating model behind this repo, read:
 - [docs/repo-strategy.md](docs/repo-strategy.md)
 - [docs/known-project-specifics.md](docs/known-project-specifics.md)
 - [docs/adoption-checklist.md](docs/adoption-checklist.md)
+- [docs/new-project-bootstrap.md](docs/new-project-bootstrap.md)
 
 ## Quick Start
 
