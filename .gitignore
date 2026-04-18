@@ -1,0 +1,30 @@
+# Environment - never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+app/node_modules
+
+# Build output
+app/.next
+app/out
+
+# Uploads (runtime data, not source)
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+*.swp

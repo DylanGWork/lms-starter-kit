@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Audiowide&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-green: #61ce70;
+    --brand-green-dark: #018902;
+    --brand-green-deeper: #006300;
+    --brand-green-accent: #02f103;
+    --brand-black: #0d0d0d;
+    --brand-button: #002400;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 font-jakarta;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-geologica;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-150;
+    background-color: var(--brand-button);
+    color: var(--brand-green);
+    border: 1px solid var(--brand-green);
+  }
+  .btn-primary:hover {
+    background-color: var(--brand-green);
+    color: var(--brand-black);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-150;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm bg-red-600 text-white hover:bg-red-700 transition-all duration-150;
+  }
+
+  .card {
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm;
+  }
+
+  .form-input {
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors;
+  }
+
+  .sidebar-item.active {
+    @apply bg-brand-green/10 text-brand-green-dark font-semibold;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  /* Rich text lesson content */
+  .lesson-content h2 {
+    @apply text-xl font-geologica font-bold text-gray-900 mt-6 mb-3;
+  }
+  .lesson-content h3 {
+    @apply text-lg font-geologica font-semibold text-gray-800 mt-4 mb-2;
+  }
+  .lesson-content p {
+    @apply text-gray-700 leading-relaxed mb-3;
+  }
+  .lesson-content ul {
+    @apply list-disc list-inside space-y-1 mb-3 text-gray-700;
+  }
+  .lesson-content ol {
+    @apply list-decimal list-inside space-y-1 mb-3 text-gray-700;
+  }
+  .lesson-content li {
+    @apply leading-relaxed;
+  }
+  .lesson-content blockquote {
+    @apply border-l-4 border-brand-green pl-4 py-1 bg-green-50 rounded-r-lg my-4 text-gray-700;
+  }
+  /* Wrap tables in a scroll container on mobile */
+  .lesson-content .table-wrapper {
+    @apply overflow-x-auto -mx-1 px-1 mb-4;
+  }
+  .lesson-content table {
+    @apply w-full text-sm border-collapse;
+    min-width: 400px;
+  }
+  .lesson-content th {
+    @apply bg-gray-100 text-gray-700 font-semibold text-left px-3 py-2 border border-gray-200;
+  }
+  .lesson-content td {
+    @apply px-3 py-2 border border-gray-200 text-gray-600;
+  }
+  .lesson-content strong {
+    @apply font-semibold text-gray-900;
+  }
+  .lesson-content a {
+    @apply text-brand-green-dark underline hover:text-brand-green;
+  }
+  .lesson-content code {
+    @apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
+  }
+  .lesson-content figure {
+    @apply my-5 overflow-hidden rounded-xl border border-gray-200 bg-white;
+  }
+  .lesson-content figure img {
+    @apply block w-full h-auto;
+  }
+  .lesson-content figcaption {
+    @apply px-4 py-3 text-sm text-gray-500 bg-gray-50;
+  }
+  .lesson-content .image-grid {
+    @apply grid gap-4 my-5 md:grid-cols-2;
+  }
+  .lesson-content .image-grid figure {
+    @apply my-0;
+  }
+}
+
+/* ─── Print / PDF styles ──────────────────────────────────────────────────── */
+@media print {
+  /* Hide everything except the printable body */
+  body > * { display: none !important; }
+  .print-page { display: block !important; }
+  .print:hidden { display: none !important; }
+
+  /* Reset backgrounds and shadows for print */
+  .print-body {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .card, .lesson-content {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Ensure images don't overflow */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  /* Page break hints */
+  h2, h3 { page-break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+
+  /* Print footer always at bottom of last page */
+  .print-body { min-height: 100vh; }
+}

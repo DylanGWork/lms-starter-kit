@@ -1,0 +1,515 @@
+// PestSense Academy - Prisma Schema
+// Designed for MVP with clear paths to add quizzes, AI pipeline, and certificates later
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  TECHNICIAN
+  SITE_MANAGER
+  BUSINESS_ADMIN
+  SUPER_ADMIN
+}
+
+enum Locale {
+  en
+  fr
+  es
+  de
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AssetType {
+  VIDEO
+  IMAGE
+  PDF
+  DOCUMENT
+  SUBTITLE
+  AUDIO
+  OTHER
+}
+
+enum AssetVariantKind {
+  BASE
+  LOCALIZED_IMAGE
+  SUBTITLE_TRACK
+  DUBBED_VIDEO
+  AUDIO_TRACK
+  TRANSCRIPT
+}
+
+// ─── USERS & AUTH ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  role          Role      @default(TECHNICIAN)
+  preferredLocale Locale  @default(en)
+  isActive      Boolean   @default(true)
+  avatarUrl     String?
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  progress        LessonProgress[]
+  videoProgress   VideoProgress[]
+  loginEvents     LoginEvent[]
+  sessions        Session[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique @default(cuid())
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
+// ─── CONTENT HIERARCHY ────────────────────────────────────────────────────────
+// Category > Course > Module > Lesson
+
+model Category {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  slug        String        @unique
+  description String?
+  icon        String?       // lucide icon name or emoji
+  color       String?       // hex color for UI differentiation
+  sortOrder   Int           @default(0)
+  status      ContentStatus @default(PUBLISHED)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  courses     Course[]
+  locales     CategoryLocale[]
+
+  @@index([slug])
+}
+
+model Course {
+  id            String        @id @default(cuid())
+  categoryId    String
+  title         String
+  slug          String        @unique
+  description   String?
+  thumbnailUrl  String?
+  status        ContentStatus @default(DRAFT)
+  sortOrder     Int           @default(0)
+  estimatedMins Int?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  category      Category      @relation(fields: [categoryId], references: [id])
+  modules       Module[]
+  locales       CourseLocale[]
+  roleVisibility CourseRole[]
+  requirements  CourseRequirement[]
+
+  @@index([categoryId])
+  @@index([slug])
+  @@index([status])
+}
+
+// Which courses are mandatory for which roles (managed by admin)
+model CourseRequirement {
+  id        String   @id @default(cuid())
+  courseId  String
+  role      Role     // e.g. TECHNICIAN must complete this course
+  notes     String?  // e.g. "Required for insurance compliance"
+  createdAt DateTime @default(now())
+
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, role])
+  @@index([role])
+}
+
+// Which roles can see which courses
+model CourseRole {
+  courseId  String
+  role      Role
+
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, role])
+}
+
+model Module {
+  id          String        @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  sortOrder   Int           @default(0)
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+  locales     ModuleLocale[]
+
+  @@index([courseId])
+}
+
+model Lesson {
+  id              String        @id @default(cuid())
+  moduleId        String
+  title           String
+  slug            String        @unique
+  summary         String?
+  content         String?       // Rich text HTML/markdown
+  videoUrl        String?       // External (YouTube/Vimeo) or internal path
+  videoProvider   String?       // 'youtube' | 'vimeo' | 'local'
+  duration        Int?          // seconds
+  sortOrder       Int           @default(0)
+  status          ContentStatus @default(DRAFT)
+  version         String?       @default("1.0")
+  lastReviewedAt  DateTime?
+
+  // AI pipeline readiness
+  transcript      String?
+  aiSummary       String?
+  aiFaqDraft      Json?         // array of {q, a}
+  aiProcessingJob String?       // job reference for future AI processor
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  module          Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  assets          LessonAsset[]
+  locales         LessonLocale[]
+  progress        LessonProgress[]
+  videoProgress   VideoProgress[]
+  tags            LessonTag[]
+  relatedLessons  RelatedLesson[] @relation("LessonRelations")
+  relatedTo       RelatedLesson[] @relation("RelatedLessonRelations")
+
+  @@index([moduleId])
+  @@index([slug])
+  @@index([status])
+}
+
+model CategoryLocale {
+  id          String        @id @default(cuid())
+  categoryId  String
+  locale      Locale
+  status      ContentStatus @default(DRAFT)
+  name        String
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  category    Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale, status])
+}
+
+model CourseLocale {
+  id           String        @id @default(cuid())
+  courseId     String
+  locale       Locale
+  status       ContentStatus @default(DRAFT)
+  title        String
+  description  String?
+  thumbnailUrl String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, locale])
+  @@index([locale, status])
+}
+
+model ModuleLocale {
+  id          String        @id @default(cuid())
+  moduleId    String
+  locale      Locale
+  status      ContentStatus @default(DRAFT)
+  title       String
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  module      Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, locale])
+  @@index([locale, status])
+}
+
+model LessonLocale {
+  id            String        @id @default(cuid())
+  lessonId       String
+  locale         Locale
+  status         ContentStatus @default(DRAFT)
+  title          String
+  summary        String?
+  content        String?
+  transcript     String?
+  videoUrl       String?
+  videoProvider  String?
+  subtitleUrl    String?
+  posterUrl      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  lesson         Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, locale])
+  @@index([locale, status])
+}
+
+model RelatedLesson {
+  lessonId        String
+  relatedLessonId String
+
+  lesson          Lesson @relation("LessonRelations", fields: [lessonId], references: [id], onDelete: Cascade)
+  relatedLesson   Lesson @relation("RelatedLessonRelations", fields: [relatedLessonId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, relatedLessonId])
+}
+
+// ─── ASSETS ───────────────────────────────────────────────────────────────────
+
+model Asset {
+  id           String        @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int           // bytes
+  url          String        // /uploads/... or S3 URL
+  type         AssetType
+  locale       Locale        @default(en)
+  variantKind  AssetVariantKind @default(BASE)
+  title        String?
+  description  String?
+  status       ContentStatus @default(DRAFT)
+
+  // Metadata for search/filter
+  product      String?
+  version      String?
+
+  // AI readiness: source recording info
+  isSourceRecording Boolean @default(false)
+  aiProcessingJob   String?
+
+  // For extracted video frames: link back to source video
+  sourceVideoId    String?
+  videoTimestamp   Int?          // seconds into the source video
+  framesExtracted  Boolean @default(false)  // true once ffmpeg has run
+  sourceAssetId    String?
+
+  uploadedById String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  lessons         LessonAsset[]
+  tags            AssetTag[]
+  sourceVideo     Asset?   @relation("VideoFrames", fields: [sourceVideoId], references: [id], onDelete: SetNull)
+  extractedFrames Asset[]  @relation("VideoFrames")
+  sourceAsset     Asset?   @relation("AssetVariants", fields: [sourceAssetId], references: [id], onDelete: SetNull)
+  variants        Asset[]  @relation("AssetVariants")
+
+  @@index([type])
+  @@index([status])
+  @@index([locale])
+  @@index([sourceVideoId])
+  @@index([sourceAssetId])
+}
+
+model LessonAsset {
+  id        String  @id @default(cuid())
+  lessonId  String
+  assetId   String
+  label     String?
+  sortOrder Int     @default(0)
+
+  lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  asset     Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, assetId])
+  @@index([lessonId])
+}
+
+// ─── TAGS ─────────────────────────────────────────────────────────────────────
+
+model Tag {
+  id       String      @id @default(cuid())
+  name     String      @unique
+  slug     String      @unique
+
+  lessons  LessonTag[]
+  assets   AssetTag[]
+}
+
+model LessonTag {
+  lessonId String
+  tagId    String
+
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, tagId])
+}
+
+model AssetTag {
+  assetId String
+  tagId   String
+
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([assetId, tagId])
+}
+
+// ─── PROGRESS TRACKING ────────────────────────────────────────────────────────
+
+model LessonProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  lessonId    String
+  started     Boolean   @default(false)
+  completed   Boolean   @default(false)
+  startedAt   DateTime?
+  completedAt DateTime?
+  lastViewedAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+}
+
+// ─── FUTURE: QUIZZES (schema ready, not implemented in MVP UI) ────────────────
+
+model Quiz {
+  id          String   @id @default(cuid())
+  lessonId    String   @unique
+  title       String
+  passMark    Int      @default(80) // percentage
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions   QuizQuestion[]
+  attempts    QuizAttempt[]
+}
+
+model QuizQuestion {
+  id        String   @id @default(cuid())
+  quizId    String
+  question  String
+  options   Json     // [{text: string, isCorrect: boolean}]
+  sortOrder Int      @default(0)
+
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String
+  userId      String
+  score       Int
+  passed      Boolean
+  answers     Json     // {questionId: selectedOption}
+  completedAt DateTime @default(now())
+
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([quizId])
+}
+
+// ─── ANALYTICS ────────────────────────────────────────────────────────────────
+
+model LoginEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  loginAt     DateTime @default(now())
+  deviceType  String?  // 'mobile' | 'desktop' | 'tablet'
+  userAgent   String?
+  screenWidth Int?     // viewport width reported by client
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([loginAt])
+}
+
+model VideoProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  lessonId        String
+  watchedSeconds  Int      @default(0)   // total unique seconds watched
+  durationSeconds Int?                   // full video duration
+  percentWatched  Float    @default(0)   // 0–100
+  completed       Boolean  @default(false) // watched ≥80%
+  lastPosition    Int      @default(0)   // last playhead position (seconds)
+  playCount       Int      @default(1)   // number of play sessions
+  firstWatchedAt  DateTime @default(now())
+  lastWatchedAt   DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson          Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+}
+
+// ─── FUTURE: AI PROCESSING JOBS ───────────────────────────────────────────────
+
+model AIProcessingJob {
+  id          String   @id @default(cuid())
+  assetId     String?
+  lessonId    String?
+  jobType     String   // 'transcribe' | 'summarise' | 'faq' | 'chapters' | 'quiz'
+  status      String   @default("pending") // pending | running | done | error
+  inputData   Json?
+  outputData  Json?
+  errorMsg    String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([assetId])
+}
